@@ -1,0 +1,194 @@
+
+For any problems with this package, please e-mail
+rlpowell@digitalkingdom.org
+
+Overview
+========
+
+SPath is a library for running search queries against s-expressions,
+intended to match parts of them that the user needs. It is inspired
+by s-query and loosely by XPath; not that it has the full expressive
+power of XPath, but some of the stylistic choices and ideas were
+taken from there. In particular, SPath finds all instances of a
+match in the same sort of way as XPath. 
+
+The goal of SPath, like s-query, was to provide a means to easily
+dig around in XML structures, but unlike s-query I tried to do it in
+a fashion agnostic to the XML generation system in question. I also
+consider it of general utility, because I get sick of writing nests
+of list operations. 
+
+It was created by Robin Lee Powell, and is in the public domain.
+
+Laziness
+========
+
+SPath uses Heresy (http://www.cliki.net/Heresy), a moderately
+obscure lazy list library.  This shouldn't be something you notice,
+unless you decide to use a function as return type specifier, in
+which case it does need to accept lazy lists.  However, it means
+that :first will do near to the minimum amount of work, which is
+nice.
+
+Operation
+=========
+
+At any given step, a list of lists is being processed.
+
+New operations either trim the list (i.e. keep only those things
+that match) or modify every list, or both (in particular,
+modification commands always drop every list that can't be modified
+as requested).
+
+Usage
+=====
+
+(spath [return-specifier] [list-of-lists] [command]...)
+
+Return Specifiers
+=================
+
+:none
+    Do nothing, which means you're going to get back Heresy-based
+    lazy lists.
+
+:lists
+    Return a normal list of lists.
+
+:first
+    Return the first thing that matches all the commands.
+
+#'[some-function]
+    Runs the function lazily against each value matched by all the
+    commands.
+
+Commands
+========
+
+dig
+---
+
+Digs into the list structure, find any instance of the following
+element, and returning that item and the rest if the list at that
+level of nesting.
+
+find
+----
+
+Like dig, but only works on the current top level.  In other words,
+it's like member, but returns all matches.
+
+next
+----
+
+Runs "cdr" on every list.
+
+item
+----
+
+Runs "car" on every list.
+
+#'[anything]
+------------
+
+Runs the function against every top-level item in every list.  Only
+those elements that match are kept (again, with tails as usual, as
+per find and dig).
+
+Examples
+========
+
+For comprehensive examples, see tests.lisp.
+
+
+Example 1
+---------
+
+    (spath :lists '(
+	     (a (b 1) (c 1))
+	     (b 3)
+	     (b a q (c 1))
+	    )
+     find b)
+
+Returns:
+
+    '(
+	    (b 3)
+	    (b a q (c 1))
+     )
+
+
+Example 2
+---------
+
+    (spath :lists '(
+	     (a (x 1) (c 1))
+	     (x 3)
+	     (x a q (c 1))
+	    )
+     find b)
+
+Returns nil.
+
+Example 3
+---------
+
+    (spath :lists '(
+	     (a (x 1) (c 1))
+	     (b 3)
+	     (b a q (c 1))
+	    )
+     find b
+     next
+     item)
+
+Returns:
+
+'(
+	3
+	a
+ )
+
+Note that the use of "item" is the only way that anything other than
+a list of lists can get returned by spath.
+
+Example 4
+---------
+
+(spath
+ :lists
+ '(
+     (a (b c 1 (d 8) (b 3) (e 2)))
+  )
+ dig c
+ next
+ next
+ item
+ next
+ item)
+
+Returns:
+
+'(
+	8
+ )
+
+Example 5
+---------
+
+(spath
+ :lists
+ '(
+     (a (b c 1 (d 1) (e 2)))
+  )
+ dig b
+ #'listp)
+
+Returns:
+
+    '(
+	    (D 1)
+	    (E 2)
+     )
+
